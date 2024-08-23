@@ -35,8 +35,8 @@ function CustomUILib:CreateWindow(WindowTitle)
     local ScreenGui = CreateElement("ScreenGui", {Name = "CustomUI", Parent = game.CoreGui})
 
     local MainFrame = CreateElement("Frame", {
-        Size = UDim2.new(0, 400, 0, 300),
-        Position = UDim2.new(0.5, -200, 0.5, -150),
+        Size = UDim2.new(0, 500, 0, 400),
+        Position = UDim2.new(0.5, -250, 0.5, -200),
         BackgroundColor3 = self.Themes[self.SelectedTheme].Background,
         Parent = ScreenGui
     }, {
@@ -44,12 +44,12 @@ function CustomUILib:CreateWindow(WindowTitle)
     })
 
     local TitleBar = CreateElement("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 30),
+        Size = UDim2.new(1, 0, 0, 40),
         BackgroundColor3 = self.Themes[self.SelectedTheme].Primary,
         Text = WindowTitle,
         TextColor3 = self.Themes[self.SelectedTheme].Text,
         Font = Enum.Font.GothamBold,
-        TextSize = 16
+        TextSize = 18
     }, {
         CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
     })
@@ -87,6 +87,81 @@ function CustomUILib:CreateWindow(WindowTitle)
     end)
 
     return MainFrame
+end
+
+function CustomUILib:CreateTabWindow(WindowTitle)
+    local ScreenGui = CreateElement("ScreenGui", {Name = "CustomUI", Parent = game.CoreGui})
+
+    local MainFrame = CreateElement("Frame", {
+        Size = UDim2.new(0, 500, 0, 400),
+        Position = UDim2.new(0.5, -250, 0.5, -200),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Background,
+        Parent = ScreenGui
+    }, {
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
+    })
+
+    local TitleBar = CreateElement("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 40),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Primary,
+        Text = WindowTitle,
+        TextColor3 = self.Themes[self.SelectedTheme].Text,
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+        Parent = MainFrame
+    }, {
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
+    })
+
+    local TabFrame = CreateElement("Frame", {
+        Size = UDim2.new(1, 0, 0, 30),
+        Position = UDim2.new(0, 0, 0, 40),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Accent,
+        Parent = MainFrame
+    })
+
+    local ContentFrame = CreateElement("Frame", {
+        Size = UDim2.new(1, 0, 1, -70),
+        Position = UDim2.new(0, 0, 0, 70),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Background,
+        Parent = MainFrame
+    }, {
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
+    })
+
+    return {
+        MainFrame = MainFrame,
+        TabFrame = TabFrame,
+        ContentFrame = ContentFrame
+    }
+end
+
+function CustomUILib:AddTab(TabWindow, TabName)
+    local TabButton = CreateElement("TextButton", {
+        Size = UDim2.new(0, 100, 0, 30),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Primary,
+        Text = TabName,
+        TextColor3 = self.Themes[self.SelectedTheme].Text,
+        Font = Enum.Font.GothamBold,
+        TextSize = 14,
+        Parent = TabWindow.TabFrame
+    })
+
+    local TabContent = CreateElement("Frame", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Background,
+        Visible = false,
+        Parent = TabWindow.ContentFrame
+    })
+
+    TabButton.MouseButton1Click:Connect(function()
+        for _, sibling in pairs(TabWindow.ContentFrame:GetChildren()) do
+            sibling.Visible = false
+        end
+        TabContent.Visible = true
+    end)
+
+    return TabContent
 end
 
 function CustomUILib:CreateButton(Parent, ButtonText, Callback)
