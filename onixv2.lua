@@ -5,6 +5,18 @@ local LocalPlayer = game:GetService("Players").LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
 
+-- Función para crear instancias con propiedades y hijos
+local function Create(Name, Properties, Children)
+    local Object = Instance.new(Name)
+    for i, v in next, Properties or {} do
+        Object[i] = v
+    end
+    for i, v in next, Children or {} do
+        v.Parent = Object
+    end
+    return Object
+end
+
 -- Inicialización de la biblioteca Orion
 local OrionLib = {
     Elements = {},
@@ -25,6 +37,22 @@ local OrionLib = {
     Folder = nil,
     SaveCfg = false
 }
+
+-- Función para crear elementos y añadirlos a la lista de elementos
+local function CreateElement(ElementName, ElementFunction)
+    OrionLib.Elements[ElementName] = function(...)
+        return ElementFunction(...)
+    end
+end
+
+-- Función para crear un nuevo elemento a partir de la lista de elementos
+local function MakeElement(ElementName, ...)
+    if OrionLib.Elements[ElementName] then
+        return OrionLib.Elements[ElementName](...)
+    else
+        error("Elemento no definido: " .. tostring(ElementName))
+    end
+end
 
 -- Carga de íconos de Feather desde una fuente externa
 local Icons = {}
@@ -127,31 +155,6 @@ local function MakeDraggable(DragPoint, Main)
         end)
     end)
 end    
-
--- Función para crear instancias con propiedades y hijos
-local function Create(Name, Properties, Children)
-    local Object = Instance.new(Name)
-    for i, v in next, Properties or {} do
-        Object[i] = v
-    end
-    for i, v in next, Children or {} do
-        v.Parent = Object
-    end
-    return Object
-end
-
--- Función para crear elementos y añadirlos a la lista de elementos
-local function CreateElement(ElementName, ElementFunction)
-    OrionLib.Elements[ElementName] = function(...)
-        return ElementFunction(...)
-    end
-end
-
--- Función para crear un nuevo elemento a partir de la lista de elementos
-local function MakeElement(ElementName, ...)
-    local NewElement = OrionLib.Elements[ElementName](...)
-    return NewElement
-end
 
 -- Función para establecer propiedades en un objeto
 local function SetProps(Element, Props)
