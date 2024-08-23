@@ -49,12 +49,11 @@ function CustomUILib:CreateWindow(WindowTitle)
         Text = WindowTitle,
         TextColor3 = self.Themes[self.SelectedTheme].Text,
         Font = Enum.Font.GothamBold,
-        TextSize = 18
+        TextSize = 18,
+        Parent = MainFrame
     }, {
         CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
     })
-
-    TitleBar.Parent = MainFrame
 
     -- Draggable functionality
     local Dragging, DragInput, StartPos, DragStart = false, nil, nil, nil
@@ -90,47 +89,26 @@ function CustomUILib:CreateWindow(WindowTitle)
 end
 
 function CustomUILib:CreateTabWindow(WindowTitle)
-    local ScreenGui = CreateElement("ScreenGui", {Name = "CustomUI", Parent = game.CoreGui})
-
-    local MainFrame = CreateElement("Frame", {
-        Size = UDim2.new(0, 500, 0, 400),
-        Position = UDim2.new(0.5, -250, 0.5, -200),
-        BackgroundColor3 = self.Themes[self.SelectedTheme].Background,
-        Parent = ScreenGui
-    }, {
-        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
-    })
-
-    local TitleBar = CreateElement("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = self.Themes[self.SelectedTheme].Primary,
-        Text = WindowTitle,
-        TextColor3 = self.Themes[self.SelectedTheme].Text,
-        Font = Enum.Font.GothamBold,
-        TextSize = 18,
-        Parent = MainFrame
-    }, {
-        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
-    })
+    local Window = self:CreateWindow(WindowTitle)
 
     local TabFrame = CreateElement("Frame", {
         Size = UDim2.new(1, 0, 0, 30),
         Position = UDim2.new(0, 0, 0, 40),
         BackgroundColor3 = self.Themes[self.SelectedTheme].Accent,
-        Parent = MainFrame
+        Parent = Window
     })
 
     local ContentFrame = CreateElement("Frame", {
         Size = UDim2.new(1, 0, 1, -70),
         Position = UDim2.new(0, 0, 0, 70),
         BackgroundColor3 = self.Themes[self.SelectedTheme].Background,
-        Parent = MainFrame
+        Parent = Window
     }, {
         CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
     })
 
     return {
-        MainFrame = MainFrame,
+        MainFrame = Window,
         TabFrame = TabFrame,
         ContentFrame = ContentFrame
     }
