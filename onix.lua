@@ -1,222 +1,113 @@
+-- Servicios principales
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local LocalPlayer = game:GetService("Players").LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 
+-- Biblioteca personalizada para la GUI
 local CustomUILib = {
     Elements = {},
-    ThemeObjects = {},
     Connections = {},
-    Flags = {},
     Themes = {
         Default = {
-            Main = Color3.fromRGB(30, 30, 30),
-            Second = Color3.fromRGB(40, 40, 40),
-            Stroke = Color3.fromRGB(60, 60, 60),
-            Divider = Color3.fromRGB(70, 70, 70),
+            Background = Color3.fromRGB(30, 30, 30),
+            Primary = Color3.fromRGB(40, 40, 40),
+            Accent = Color3.fromRGB(70, 70, 70),
             Text = Color3.fromRGB(255, 255, 255),
-            TextDark = Color3.fromRGB(150, 150, 150)
+            Highlight = Color3.fromRGB(100, 100, 255)
         }
     },
-    SelectedTheme = "Default",
-    Folder = nil,
-    SaveCfg = false
+    SelectedTheme = "Default"
 }
 
-local function CloseExistingGUI()
-    for _, gui in ipairs(game.CoreGui:GetChildren()) do
-        if gui.Name == "CustomUI" and gui:IsA("ScreenGui") then
-            gui:Destroy()
-        end
+-- Función para crear elementos GUI
+local function CreateElement(ElementType, Properties, Children)
+    local Element = Instance.new(ElementType)
+    for prop, value in pairs(Properties) do
+        Element[prop] = value
     end
-end
-
--- Llamar a la función para cerrar cualquier GUI existente
-CloseExistingGUI()
-
-local CustomUI = Instance.new("ScreenGui")
-CustomUI.Name = "CustomUI"
-if syn then
-    syn.protect_gui(CustomUI)
-    CustomUI.Parent = game.CoreGui
-else
-    CustomUI.Parent = gethui() or game.CoreGui
-end
-
-if gethui then
-    for _, Interface in ipairs(gethui():GetChildren()) do
-        if Interface.Name == CustomUI.Name and Interface ~= CustomUI then
-            Interface:Destroy()
-        end
+    for _, child in ipairs(Children or {}) do
+        child.Parent = Element
     end
-else
-    for _, Interface in ipairs(game.CoreGui:GetChildren()) do
-        if Interface.Name == CustomUI.Name and Interface ~= CustomUI then
-            Interface:Destroy()
-        end
-    end
+    return Element
 end
 
-local function AddConnection(Signal, Function)
-    local SignalConnect = Signal:Connect(Function)
-    table.insert(CustomUILib.Connections, SignalConnect)
-    return SignalConnect
-end
+-- Función para crear la ventana principal de la GUI
+function CustomUILib:CreateWindow(WindowTitle)
+    -- Crear ScreenGui
+    local ScreenGui = CreateElement("ScreenGui", {Name = "CustomUI", Parent = game.CoreGui})
 
-local function MakeDraggable(DragPoint, Main)
-    local Dragging, DragInput, MousePos, FramePos = false
-    AddConnection(DragPoint.InputBegan, function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+    -- Crear el marco principal
+    local MainFrame = CreateElement("Frame", {
+        Size = UDim2.new(0, 400, 0, 300),
+        Position = UDim2.new(0.5, -200, 0.5, -150),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Background,
+        Parent = ScreenGui
+    }, {
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
+    })
+
+    -- Crear la barra de título
+    local TitleBar = CreateElement("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 30),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Primary,
+        Text = WindowTitle,
+        TextColor3 = self.Themes[self.SelectedTheme].Text,
+        Font = Enum.Font.GothamBold,
+        TextSize = 16
+    }, {
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
+    })
+
+    TitleBar.Parent = MainFrame
+
+    -- Hacer la ventana arrastrable
+    local Dragging, DragInput, StartPos, DragStart = false, nil, nil, nil
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
             Dragging = true
-            MousePos = Input.Position
-            FramePos = Main.Position
+            DragStart = input.Position
+            StartPos = MainFrame.Position
 
-            Input.Changed:Connect(function()
-                if Input.UserInputState == Enum.UserInputState.End then
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
                     Dragging = false
                 end
             end)
         end
     end)
-    AddConnection(DragPoint.InputChanged, function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseMovement then
-            DragInput = Input
+
+    TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            DragInput = input
         end
     end)
-    AddConnection(UserInputService.InputChanged, function(Input)
-        if Input == DragInput and Dragging then
-            local Delta = Input.Position - MousePos
-            Main.Position = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == DragInput and Dragging then
+            local Delta = input.Position - DragStart
+            MainFrame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
         end
     end)
-end
-
-local function Create(Name, Properties, Children)
-    local Object = Instance.new(Name)
-    for i, v in next, Properties or {} do
-        Object[i] = v
-    end
-    for i, v in next, Children or {} do
-        v.Parent = Object
-    end
-    return Object
-end
-
-local function AddThemeObject(Object, Type)
-    if not CustomUILib.ThemeObjects[Type] then
-        CustomUILib.ThemeObjects[Type] = {}
-    end
-    table.insert(CustomUILib.ThemeObjects[Type], Object)
-    Object[ReturnProperty(Object)] = CustomUILib.Themes[CustomUILib.SelectedTheme][Type]
-    return Object
-end
-
-local function ReturnProperty(Object)
-    if Object:IsA("Frame") or Object:IsA("TextButton") then
-        return "BackgroundColor3"
-    end
-    if Object:IsA("ScrollingFrame") then
-        return "ScrollBarImageColor3"
-    end
-    if Object:IsA("UIStroke") then
-        return "Color"
-    end
-    if Object:IsA("TextLabel") or Object:IsA("TextBox") then
-        return "TextColor3"
-    end
-    if Object:IsA("ImageLabel") or Object:IsA("ImageButton") then
-        return "ImageColor3"
-    end
-end
-
-local function SetTheme()
-    for Name, Type in pairs(CustomUILib.ThemeObjects) do
-        for _, Object in pairs(Type) do
-            Object[ReturnProperty(Object)] = CustomUILib.Themes[CustomUILib.SelectedTheme][Name]
-        end
-    end
-end
-
-function CustomUILib:CreateTabWindow(WindowTitle)
-    local MainFrame = Create("Frame", {
-        Size = UDim2.new(0, 500, 0, 300),
-        Position = UDim2.new(0.5, -250, 0.5, -150),
-        BackgroundColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Main,
-        Parent = CustomUI
-    }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-        Create("UIStroke", {Color = CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke}),
-    })
-
-    local TitleBar = Create("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Second,
-        Text = WindowTitle,
-        TextColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Text,
-        Font = Enum.Font.GothamBold,
-        TextSize = 16,
-        Parent = MainFrame
-    }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-        Create("UIStroke", {Color = CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke}),
-    })
-
-    MakeDraggable(TitleBar, MainFrame)
 
     return MainFrame
 end
 
-function CustomUILib:AddTab(Window, TabTitle)
-    local TabButton = Create("TextButton", {
-        Size = UDim2.new(0, 100, 0, 40),
-        BackgroundColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Second,
-        Text = TabTitle,
-        TextColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Text,
-        Font = Enum.Font.GothamBold,
-        TextSize = 14,
-        Parent = Window
-    }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-        Create("UIStroke", {Color = CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke}),
-    })
-
-    local TabContent = Create("Frame", {
-        Size = UDim2.new(1, 0, 1, -40),
-        Position = UDim2.new(0, 0, 0, 40),
-        BackgroundColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Main,
-        Visible = false,
-        Parent = Window
-    }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-        Create("UIStroke", {Color = CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke}),
-    })
-
-    TabButton.MouseButton1Click:Connect(function()
-        for _, child in ipairs(Window:GetChildren()) do
-            if child:IsA("Frame") and child ~= TabContent then
-                child.Visible = false
-            end
-        end
-        TabContent.Visible = true
-    end)
-
-    return TabContent
-end
-
+-- Función para crear un botón
 function CustomUILib:CreateButton(Parent, ButtonText, Callback)
-    local Button = Create("TextButton", {
+    local Button = CreateElement("TextButton", {
         Size = UDim2.new(0, 200, 0, 50),
-        BackgroundColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Second,
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Accent,
         Text = ButtonText,
-        TextColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Text,
+        TextColor3 = self.Themes[self.SelectedTheme].Text,
         Font = Enum.Font.GothamBold,
         TextSize = 14,
         Parent = Parent
     }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-        Create("UIStroke", {Color = CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke}),
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
     })
 
     Button.MouseButton1Click:Connect(function()
@@ -226,43 +117,43 @@ function CustomUILib:CreateButton(Parent, ButtonText, Callback)
     return Button
 end
 
+-- Función para crear un toggle (interruptor)
 function CustomUILib:CreateToggle(Parent, ToggleText, Default, Callback)
     local Toggle = {Value = Default}
 
-    local ToggleFrame = Create("Frame", {
+    local ToggleFrame = CreateElement("Frame", {
         Size = UDim2.new(0, 200, 0, 50),
-        BackgroundColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Second,
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Accent,
         Parent = Parent
     }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-        Create("UIStroke", {Color = CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke}),
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
     })
 
-    local Label = Create("TextLabel", {
+    local Label = CreateElement("TextLabel", {
         Size = UDim2.new(1, -60, 1, 0),
         Position = UDim2.new(0, 10, 0, 0),
         BackgroundTransparency = 1,
         Text = ToggleText,
-        TextColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Text,
+        TextColor3 = self.Themes[self.SelectedTheme].Text,
         Font = Enum.Font.GothamBold,
         TextSize = 14,
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = ToggleFrame
     })
 
-    local Switch = Create("Frame", {
+    local Switch = CreateElement("Frame", {
         Size = UDim2.new(0, 40, 0, 20),
         Position = UDim2.new(1, -50, 0.5, -10),
-        BackgroundColor3 = Default and CustomUILib.Themes[CustomUILib.SelectedTheme].Divider or CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke,
+        BackgroundColor3 = Default and self.Themes[self.SelectedTheme].Highlight or self.Themes[self.SelectedTheme].Primary,
         Parent = ToggleFrame
     }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 10)})
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 10)})
     })
 
     Switch.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             Toggle.Value = not Toggle.Value
-            Switch.BackgroundColor3 = Toggle.Value and CustomUILib.Themes[CustomUILib.SelectedTheme].Divider or CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke
+            Switch.BackgroundColor3 = Toggle.Value and CustomUILib.Themes[CustomUILib.SelectedTheme].Highlight or CustomUILib.Themes[CustomUILib.SelectedTheme].Primary
             Callback(Toggle.Value)
         end
     end)
@@ -270,25 +161,102 @@ function CustomUILib:CreateToggle(Parent, ToggleText, Default, Callback)
     return Toggle
 end
 
-function CustomUILib:Notify(NotificationText, Duration)
-    local Notification = Create("TextLabel", {
-        Size = UDim2.new(0, 300, 0, 50),
-        Position = UDim2.new(0.5, -150, 0, -100),
-        BackgroundColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Second,
-        Text = NotificationText,
-        TextColor3 = CustomUILib.Themes[CustomUILib.SelectedTheme].Text,
+-- Función para crear un slider (deslizador)
+function CustomUILib:CreateSlider(Parent, SliderText, Min, Max, Default, Callback)
+    local Slider = {Value = Default}
+
+    local SliderFrame = CreateElement("Frame", {
+        Size = UDim2.new(0, 200, 0, 50),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Accent,
+        Parent = Parent
+    }, {
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
+    })
+
+    local Label = CreateElement("TextLabel", {
+        Size = UDim2.new(1, -60, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        BackgroundTransparency = 1,
+        Text = SliderText,
+        TextColor3 = self.Themes[self.SelectedTheme].Text,
         Font = Enum.Font.GothamBold,
         TextSize = 14,
-        Parent = CustomUI
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = SliderFrame
+    })
+
+    local SliderBar = CreateElement("Frame", {
+        Size = UDim2.new(1, -120, 0, 10),
+        Position = UDim2.new(0, 100, 0.5, -5),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Primary,
+        Parent = SliderFrame
     }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-        Create("UIStroke", {Color = CustomUILib.Themes[CustomUILib.SelectedTheme].Stroke}),
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
+    })
+
+    local SliderHandle = CreateElement("Frame", {
+        Size = UDim2.new(0, 20, 0, 20),
+        Position = UDim2.new((Default - Min) / (Max - Min), -10, 0.5, -10),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Highlight,
+        Parent = SliderBar
+    }, {
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
+    })
+
+    SliderHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local Dragging = true
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    Dragging = false
+                end
+            end)
+
+            local function UpdateInput(input)
+                if Dragging then
+                    local Delta = input.Position.X - SliderBar.AbsolutePosition.X
+                    local Percent = math.clamp(Delta / SliderBar.AbsoluteSize.X, 0, 1)
+                    Slider.Value = math.floor(Min + Percent * (Max - Min))
+                    SliderHandle.Position = UDim2.new(Percent, -10, 0.5, -10)
+                    Callback(Slider.Value)
+                end
+            end
+
+            UserInputService.InputChanged:Connect(UpdateInput)
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    Dragging = false
+                end
+            end)
+        end
+    end)
+
+    return Slider
+end
+
+-- Función para mostrar notificaciones
+function CustomUILib:Notify(NotificationText, Duration)
+    local ScreenGui = game.CoreGui:FindFirstChild("CustomUI")
+    if not ScreenGui then return end
+
+    local Notification = CreateElement("TextLabel", {
+        Size = UDim2.new(0, 300, 0, 50),
+        Position = UDim2.new(0.5, -150, 0, -100),
+        BackgroundColor3 = self.Themes[self.SelectedTheme].Primary,
+        Text = NotificationText,
+        TextColor3 = self.Themes[self.SelectedTheme].Text,
+        Font = Enum.Font.GothamBold,
+        TextSize = 14,
+        Parent = ScreenGui
+    }, {
+        CreateElement("UICorner", {CornerRadius = UDim.new(0, 8)})
     })
 
     TweenService:Create(Notification, TweenInfo.new(0.5), {Position = UDim2.new(0.5, -150, 0, 10)}):Play()
-
+    
     wait(Duration or 3)
-
+    
     TweenService:Create(Notification, TweenInfo.new(0.5), {Position = UDim2.new(0.5, -150, 0, -100)}):Play()
     wait(0.5)
     Notification:Destroy()
